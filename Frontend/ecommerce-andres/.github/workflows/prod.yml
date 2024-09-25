@@ -15,11 +15,11 @@ on:
 jobs:
   if_merged:
     if: github.event.pull_request.merged == true
-    name: 🎉 Deploy
+    name: Deploy
     runs-on: ubuntu-latest
 
     steps:
-      - name: 🚚 Get latest code
+      - name: Get latest code
         uses: actions/checkout@v4
 
       - name: Use Node.js 20
@@ -27,12 +27,17 @@ jobs:
         with:
           node-version: '20'
 
-      - name: 🔨 Build Project
+      - name: Increment version
         run: |
-          yarn
-          yarn build
+          npm version patch
 
-      - name: 📂 Deploy to Server
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Project
+        run: npm run build
+
+      - name: Deploy to Server
         uses: easingthemes/ssh-deploy@v4
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_KEY }}
@@ -42,3 +47,11 @@ jobs:
           REMOTE_USER: ${{ secrets.REMOTE_USER_HOME }}
           TARGET: public_html/ecommerce
           EXCLUDE: '/build/, /node_modules/'
+
+      - name: Push version change
+        run: |
+          git config --local user.email ${{ secrets.EMAIL_REPOSITORY }}
+          git config --local user.name ${{ secrets.USER_REPOSITORY }}
+          git add package.json
+          git commit -m "ci: increment version"
+          git push origin master 
