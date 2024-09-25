@@ -1,0 +1,126 @@
+version: '3'
+
+services:
+  api-gateway:
+    build: ./Backend/api-gateway
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./Backend/api-gateway/src:/usr/src/app/src
+      - ./Backend/common-proto:/usr/src/app/node_modules/common-proto
+    command: npm run start:dev
+    environment:
+      - PORT=3000
+      - URL_GRPC_AUTH_SERVICE=auth-services:50051
+      - URL_GRPC_ORDER_SERVICE=order-services:50052
+      - URL_GRPC_PRODUCT_SERVICE=product-services:50053
+    depends_on:
+      - auth-services 
+      - product-services  
+      - order-services  
+
+  auth-services:
+    build: ./Backend/auth-services
+    ports:
+      - "50051:50051"
+    volumes:
+      - ./Backend/auth-services/src:/usr/src/app/src
+      - ./Backend/common-proto:/usr/src/app/node_modules/common-proto
+    command: npm run start:dev
+    environment:
+      - URL_GRPC=0.0.0.0:50051
+      - DB_CONNECTION=postgres
+      - DB_HOST=db_auth_services
+      - DB_PORT=5432
+      - DB_DATABASE=micro_auth
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+    depends_on:
+      - db_auth_services
+
+  product-services:
+    build: ./Backend/product-services
+    ports:
+      - "50053:50053"
+    volumes:
+      - ./Backend/product-services/src:/usr/src/app/src
+      - ./Backend/common-proto:/usr/src/app/node_modules/common-proto
+    command: npm run start:dev
+    environment:
+      - URL_GRPC=0.0.0.0:50053
+      - DB_CONNECTION=postgres
+      - DB_HOST=db_product_services
+      - DB_PORT=5432
+      - DB_DATABASE=micro_product
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+    depends_on:
+      - db_product_services
+
+  order-services:
+    build: ./Backend/order-services
+    ports:
+      - "50052:50052"
+    volumes:
+      - ./Backend/order-services/src:/usr/src/app/src
+      - ./Backend/common-proto:/usr/src/app/node_modules/common-proto
+    command: npm run start:dev
+    environment:
+      - URL_GRPC=0.0.0.0:50052
+      - DB_CONNECTION=postgres
+      - DB_HOST=db_order_services
+      - DB_PORT=5432
+      - DB_DATABASE=micro_order
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - URL_GRPC_PRODUCT_SERVICE=product-services:50053
+    depends_on:
+      - db_order_services
+      - product-services            
+
+  db_auth_services:
+    image: postgres:latest
+    ports:
+      - "5433:5432"
+    environment:
+      - POSTGRES_DB=micro_auth
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+
+  db_product_services:
+    image: postgres:latest
+    ports:
+      - "5434:5432"
+    environment:
+      - POSTGRES_DB=micro_product
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres      
+   
+  db_order_services:
+    image: postgres:latest
+    ports:
+      - "5435:5432"
+    environment:
+      - POSTGRES_DB=micro_order
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres   
+
+  frontend-app:
+    build: ./Frontend/ecommerce-andres
+    ports:
+      - "80:80"
+    volumes:
+      - ./Frontend/ecommerce-andres/src:/usr/src/app/src
+    # command: npm start
+    environment:
+      - VITE_APP_VERSION=v1.0.0
+      - GENERATE_SOURCEMAP=false
+      - VITE_PORT=3002
+      - PUBLIC_URL=localhost
+      - VITE_APP_BASE_NAME=/
+      - VITE_API_URL=api-gateway:3000
+    depends_on:
+      - api-gateway
+      - auth-services 
+      - product-services  
+      - order-services  
